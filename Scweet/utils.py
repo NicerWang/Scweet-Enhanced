@@ -4,11 +4,9 @@ import re
 from time import sleep
 import random
 import chromedriver_autoinstaller
-import geckodriver_autoinstaller
 from selenium.common.exceptions import NoSuchElementException
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.chrome.options import Options
 import datetime
 import pandas as pd
 import platform
@@ -26,7 +24,7 @@ from .const import get_username, get_password, get_email
 
 # current_dir = pathlib.Path(__file__).parent.absolute()
 
-def get_data(card, save_images=False, save_dir=None):
+def get_data(card):
     """Extract data from tweet card"""
     image_links = []
 
@@ -79,11 +77,7 @@ def get_data(card, save_images=False, save_dir=None):
     except:
         image_links = []
 
-    # if save_images == True:
-    #	for image_url in image_links:
-    #		save_image(image_url, image_url, save_dir)
     # handle promoted tweets
-
     try:
         promoted = card.find_element(by=By.XPATH, value='.//div[2]/div[2]/[last()]//span').text == "Promoted"
     except:
@@ -119,20 +113,17 @@ def get_data(card, save_images=False, save_dir=None):
     return tweet
 
 
-def init_driver(headless=True, proxy=None, show_images=False, option=None, firefox=False, env=None):
-    """ initiate a chromedriver or firefoxdriver instance
+def init_driver(headless=True, proxy=None, show_images=False, option=None):
+    """ initiate a chromedriver instance
         --option : other option to add (str)
     """
 
-    if firefox:
-        options = FirefoxOptions()
-        driver_path = geckodriver_autoinstaller.install()
-    else:
-        options = ChromeOptions()
-        driver_path = chromedriver_autoinstaller.install()
-
+    # create instance of web driver
+    chromedriver_path = chromedriver_autoinstaller.install()
+    # options
+    options = Options()
     if headless is True:
-        print("Scraping on headless mode.")
+        # print("Scraping on headless mode.")
         options.add_argument('--disable-gpu')
         options.headless = True
     else:
@@ -140,18 +131,13 @@ def init_driver(headless=True, proxy=None, show_images=False, option=None, firef
     options.add_argument('log-level=3')
     if proxy is not None:
         options.add_argument('--proxy-server=%s' % proxy)
-        print("using proxy : ", proxy)
-    if show_images == False and firefox == False:
+        # print("using proxy : ", proxy)
+    if show_images == False:
         prefs = {"profile.managed_default_content_settings.images": 2}
         options.add_experimental_option("prefs", prefs)
     if option is not None:
         options.add_argument(option)
-
-    if firefox:
-        driver = webdriver.Firefox(options=options, executable_path=driver_path)
-    else:
-        driver = webdriver.Chrome(options=options, executable_path=driver_path)
-
+    driver = webdriver.Chrome(options=options, executable_path=chromedriver_path)
     driver.set_page_load_timeout(100)
     return driver
 
@@ -189,7 +175,7 @@ def log_search_page(driver, since, until_local, lang, display_type, words, to_ac
     else:
         display_type = ""
 
-    # filter replies
+    # filter replies 
     if filter_replies == True:
         filter_replies = "%20-filter%3Areplies"
     else:
@@ -222,6 +208,7 @@ def log_search_page(driver, since, until_local, lang, display_type, words, to_ac
         proximity = ""
 
     path = 'https://twitter.com/search?q=' + words + from_account + to_account + mention_account + hash_tags + until_local + since + lang + filter_replies + geocode + minreplies + minlikes + minretweets + '&src=typed_query' + display_type + proximity
+    print("  Search Page: " + path)
     driver.get(path)
     return path
 
@@ -268,29 +255,26 @@ def log_in(driver, env, timeout=20, wait=4):
 
 
 def keep_scroling(driver, data, writer, tweet_ids, scrolling, tweet_parsed, limit, scroll, last_position,
-                  save_images=False):
+                  filter_func=None):
     """ scrolling function for tweets crawling"""
-
-    save_images_dir = "/images"
-
-    if save_images == True:
-        if not os.path.exists(save_images_dir):
-            os.mkdir(save_images_dir)
 
     while scrolling and tweet_parsed < limit:
         sleep(random.uniform(0.5, 1.5))
         # get the card of tweets
         page_cards = driver.find_elements(by=By.XPATH, value='//article[@data-testid="tweet"]')  # changed div by article
         for card in page_cards:
-            tweet = get_data(card, save_images, save_images_dir)
+            tweet = get_data(card)
             if tweet:
+                # filter
+                if filter_func and not filter_func(tweet):
+                    continue
                 # check if the tweet is unique
                 tweet_id = ''.join(tweet[:-2])
                 if tweet_id not in tweet_ids:
                     tweet_ids.add(tweet_id)
                     data.append(tweet)
                     last_date = str(tweet[2])
-                    print("Tweet made at: " + str(last_date) + " is found.")
+                    print("     Tweet at: " + str(last_date) + " is found.")
                     writer.writerow(tweet)
                     tweet_parsed += 1
                     if tweet_parsed >= limit:
@@ -299,14 +283,15 @@ def keep_scroling(driver, data, writer, tweet_ids, scrolling, tweet_parsed, limi
         while tweet_parsed < limit:
             # check scroll position
             scroll += 1
-            print("scroll ", scroll)
+            print("  Scroll ", scroll)
             sleep(random.uniform(0.5, 1.5))
             driver.execute_script('window.scrollTo(0, document.body.scrollHeight);')
             curr_position = driver.execute_script("return window.pageYOffset;")
             if last_position == curr_position:
                 scroll_attempt += 1
                 # end of scroll region
-                if scroll_attempt >= 2:
+                # if scroll_attempt >= 2:
+                if scroll_attempt >= 1:
                     scrolling = False
                     break
                 else:
@@ -321,7 +306,7 @@ def get_users_follow(users, headless, env, follow=None, verbose=1, wait=2, limit
     """ get the following or followers of a list of users """
 
     # initiate the driver
-    driver = init_driver(headless=headless, env=env, firefox=True)
+    driver = init_driver(headless=headless)
     sleep(wait)
     # log in (the .env file should contain the username and password)
     # driver.get('https://www.twitter.com/login')
@@ -341,7 +326,7 @@ def get_users_follow(users, headless, env, follow=None, verbose=1, wait=2, limit
             sleep(wait)
             log_in(driver, env)
             sleep(wait)
-        # case 2
+        # case 2 
         if check_exists_by_xpath('//input[@name="session[username_or_email]"]', driver):
             print("Login failed. Retry...")
             sleep(wait)

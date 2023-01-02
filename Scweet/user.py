@@ -1,7 +1,10 @@
-from . import utils
-from time import sleep
-import random
 import json
+import random
+from time import sleep
+
+from selenium.webdriver.common.by import By
+
+from . import utils
 
 
 def get_user_information(users, driver=None, headless=True):
@@ -18,41 +21,42 @@ def get_user_information(users, driver=None, headless=True):
         if user is not None:
 
             try:
-                following = driver.find_element_by_xpath(
-                    '//a[contains(@href,"/following")]/span[1]/span[1]').text
-                followers = driver.find_element_by_xpath(
-                    '//a[contains(@href,"/followers")]/span[1]/span[1]').text
+                following = driver.find_element(by=By.XPATH, value=
+                '//a[contains(@href,"/following")]/span[1]/span[1]').text
+                followers = driver.find_element(by=By.XPATH, value=
+                '//a[contains(@href,"/followers")]/span[1]/span[1]').text
             except Exception as e:
                 # print(e)
                 return
 
             try:
-                element = driver.find_element_by_xpath('//div[contains(@data-testid,"UserProfileHeader_Items")]//a[1]')
+                element = driver.find_element(by=By.XPATH,
+                                              value='//div[contains(@data-testid,"UserProfileHeader_Items")]//a[1]')
                 website = element.get_attribute("href")
             except Exception as e:
                 # print(e)
                 website = ""
 
             try:
-                desc = driver.find_element_by_xpath('//div[contains(@data-testid,"UserDescription")]').text
+                desc = driver.find_element(by=By.XPATH, value='//div[contains(@data-testid,"UserDescription")]').text
             except Exception as e:
                 # print(e)
                 desc = ""
             a = 0
             try:
-                join_date = driver.find_element_by_xpath(
-                    '//div[contains(@data-testid,"UserProfileHeader_Items")]/span[3]').text
-                birthday = driver.find_element_by_xpath(
-                    '//div[contains(@data-testid,"UserProfileHeader_Items")]/span[2]').text
-                location = driver.find_element_by_xpath(
-                    '//div[contains(@data-testid,"UserProfileHeader_Items")]/span[1]').text
+                join_date = driver.find_element(by=By.XPATH,
+                                                value='//div[contains(@data-testid,"UserProfileHeader_Items")]/span[3]').text
+                birthday = driver.find_element(by=By.XPATH,
+                                               value='//div[contains(@data-testid,"UserProfileHeader_Items")]/span[2]').text
+                location = driver.find_element(by=By.XPATH,
+                                               value='//div[contains(@data-testid,"UserProfileHeader_Items")]/span[1]').text
             except Exception as e:
                 # print(e)
                 try:
-                    join_date = driver.find_element_by_xpath(
-                        '//div[contains(@data-testid,"UserProfileHeader_Items")]/span[2]').text
-                    span1 = driver.find_element_by_xpath(
-                        '//div[contains(@data-testid,"UserProfileHeader_Items")]/span[1]').text
+                    join_date = driver.find_element(by=By.XPATH,
+                                                    value='//div[contains(@data-testid,"UserProfileHeader_Items")]/span[2]').text
+                    span1 = driver.find_element(by=By.XPATH,
+                                                value='//div[contains(@data-testid,"UserProfileHeader_Items")]/span[1]').text
                     if hasNumbers(span1):
                         birthday = span1
                         location = ""
@@ -62,8 +66,8 @@ def get_user_information(users, driver=None, headless=True):
                 except Exception as e:
                     # print(e)
                     try:
-                        join_date = driver.find_element_by_xpath(
-                            '//div[contains(@data-testid,"UserProfileHeader_Items")]/span[1]').text
+                        join_date = driver.find_element(by=By.XPATH,
+                                                        value='//div[contains(@data-testid,"UserProfileHeader_Items")]/span[1]').text
                         birthday = ""
                         location = ""
                     except Exception as e:
