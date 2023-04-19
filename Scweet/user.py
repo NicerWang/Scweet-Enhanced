@@ -57,7 +57,7 @@ def get_user_information(users, driver=None, headless=True):
                                                     value='//div[contains(@data-testid,"UserProfileHeader_Items")]/span[2]').text
                     span1 = driver.find_element(by=By.XPATH,
                                                 value='//div[contains(@data-testid,"UserProfileHeader_Items")]/span[1]').text
-                    if hasNumbers(span1):
+                    if has_numbers(span1):
                         birthday = span1
                         location = ""
                     else:
@@ -115,7 +115,7 @@ def get_users_followers(users, env, verbose=1, headless=True, wait=2, limit=floa
 def get_users_following(users, env, verbose=1, headless=True, wait=2, limit=float('inf'), file_path=None):
     following = utils.get_users_follow(users, headless, env, "following", verbose, wait=wait, limit=limit)
 
-    if file_path == None:
+    if file_path is None:
         file_path = 'outputs/' + str(users[0]) + '_' + str(users[-1]) + '_' + 'following.json'
     else:
         file_path = file_path + str(users[0]) + '_' + str(users[-1]) + '_' + 'following.json'
@@ -125,5 +125,5 @@ def get_users_following(users, env, verbose=1, headless=True, wait=2, limit=floa
     return following
 
 
-def hasNumbers(inputString):
-    return any(char.isdigit() for char in inputString)
+def has_numbers(input_str):
+    return any(char.isdigit() for char in input_str)

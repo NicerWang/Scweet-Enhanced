@@ -2,48 +2,73 @@
 
 # Scweet-Enhanced
 
-All the usages are nearly the same as [Scweet](https://github.com/Altimis/Scweet).
+A Tool Enhanced from [Scweet](https://github.com/Altimis/Scweet).
 
 ## What Enhanced？
 
-1. A new Parameter for `scrape`: filter_func
+1. Support Filter
 
-   You need provide a `function`, which takes an array as input. The array contains all info of a tweet, return `True` to scrape, `False` to skip.
+   Inherit Filter (in entity.py), and implement `run` method.
 
-   > Order in array is identical to CSV file.
+   Then you can do anything to tweet in `run`, or return `None` to discard it.
 
-   ```python
-   def my_filter(tweet):
-       print("		In My Filter")
-       if len(tweet[4]) > 40: # Tweet Length > 40 to scrape
-           return True
-       else:				   # Just skip
-           return False
-       
-   data = scrape(... , filter_func=my_filter)
-   ```
+2. Detach Durability
 
-2. A new Parameter for `scrape`: save_name
+   In Scweet, you will get a Dataframe and csv files after a run.
 
-   Set name for CSV file. None for an auto name.
+   In Scweet-Enhanced, you need to add `DurabilityHandler` for that. 
 
-3. Remove Terminal Usage
+   You can create your handlers, but there are two provided:
 
-4. Modified Outputs
+   * CSVDurabilityHandler
 
-Note : You must have Chrome installed on your system, new source code in Scweet supports Firefox, but not Scweet-Enhanced.
+     To write or append tweets to csv file. (**MUST** provide filename)
 
-## Usage :
+   * MySQLDurabilityHandler
 
-1. Install All Requirements:
+     To add tweets to MySQL database.
+
+   > If you want `resume`, pass `resume_handler` which accounts for getting newest tweet's time.
+
+3. Optimize parameters of `scrape`
+
+   Some name of parametersare changed.
+
+   You can create Query and Setting (in entity.py) to simplify parameters (See Example in [Usage](#Usage)).
+
+4. Other small changes.
+
+**Note : You must have Chrome installed, new source code in Scweet supports Firefox, but not Scweet-Enhanced.**
+
+## Usage
+
+1. Copy **Scweet folder** to your project.
+
+2. Install All Requirements:
 
    `pip install -r requirements.txt`
 
-2. Copy **Scweet folder** to your project.
+   * To use CSVDurabilityHandler: `pip install pandas`
+   * To use MySQLDurabilityHandler: `pip install pymysql`
 
-3. Then:
+3. Then: (An Example)
 
-   ```python
+   ```python3
    from Scweet.scweet import scrape
-   from Scweet.user import get_user_information, get_users_following, get_users_followers
+   from Scweet.entity import Filter, CSVDurabilityHandler, MySQLDurabilityHandler, Query, Setting, Tweet
+   
+   query = Query(hashtag="bitcoin", since="2023-04-01", until="2023-04-02", interval=1, display_type="Top", replies_only=False, proximity=True)
+   setting = Setting(headless=True, show_images=False, save_images=False, proxy="http://127.0.0.1:7890")
+   
+   
+   class MyFilter(Filter):
+       def run(self, tweet: Tweet) -> Tweet:
+           print("Your can modify tweet here")
+           return tweet
+   
+   
+   csv_handler = CSVDurabilityHandler(file_name="file.csv")
+   mysql_handler = MySQLDurabilityHandler("url", "username", "passwd", "db", "table")
+   
+   data = scrape(**vars(query), **vars(setting), filter_handler=MyFilter(), endure_handler=[csv_handler, mysql_handler])
    ```

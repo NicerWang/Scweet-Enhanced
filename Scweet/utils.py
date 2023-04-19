@@ -1,25 +1,20 @@
-from io import StringIO, BytesIO
-import os
-import re
-from time import sleep
 import random
-import chromedriver_autoinstaller
-from selenium.common.exceptions import NoSuchElementException
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-import datetime
-import pandas as pd
-import platform
-from selenium.webdriver.common.keys import Keys
-# import pathlib
-
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from . import const
+import re
 import urllib
+from time import sleep
+
+import chromedriver_autoinstaller
+from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 
 from .const import get_username, get_password, get_email
+from .entity import Tweet, Filter
+
+
+# import pathlib
 
 
 # current_dir = pathlib.Path(__file__).parent.absolute()
@@ -27,6 +22,14 @@ from .const import get_username, get_password, get_email
 def get_data(card):
     """Extract data from tweet card"""
     image_links = []
+
+    # handle promoted tweets
+    try:
+        promoted = card.find_element(by=By.XPATH, value='.//div[2]/div[2]/[last()]//span').text == "Promoted"
+    except:
+        promoted = False
+    if promoted:
+        return
 
     try:
         username = card.find_element(by=By.XPATH, value='.//span').text
@@ -57,33 +60,38 @@ def get_data(card):
 
     try:
         reply_cnt = card.find_element(by=By.XPATH, value='.//div[@data-testid="reply"]').text
+        if len(reply_cnt) == 0:
+            reply_cnt = 0
+        else:
+            reply_cnt = int(reply_cnt)
     except:
         reply_cnt = 0
 
     try:
         retweet_cnt = card.find_element(by=By.XPATH, value='.//div[@data-testid="retweet"]').text
+        if len(retweet_cnt) == 0:
+            retweet_cnt = 0
+        else:
+            retweet_cnt = int(retweet_cnt)
     except:
         retweet_cnt = 0
 
     try:
         like_cnt = card.find_element(by=By.XPATH, value='.//div[@data-testid="like"]').text
+        if len(like_cnt) == 0:
+            like_cnt = 0
+        else:
+            like_cnt = int(like_cnt)
     except:
         like_cnt = 0
 
     try:
-        elements = card.find_elements(by=By.XPATH, value='.//div[2]/div[2]//img[contains(@src, "https://pbs.twimg.com/")]')
+        elements = card.find_elements(by=By.XPATH,
+                                      value='.//div[2]/div[2]//img[contains(@src, "https://pbs.twimg.com/")]')
         for element in elements:
             image_links.append(element.get_attribute('src'))
     except:
         image_links = []
-
-    # handle promoted tweets
-    try:
-        promoted = card.find_element(by=By.XPATH, value='.//div[2]/div[2]/[last()]//span').text == "Promoted"
-    except:
-        promoted = False
-    if promoted:
-        return
 
     # get a string of all emojis contained in the tweet
     try:
@@ -105,11 +113,13 @@ def get_data(card):
     try:
         element = card.find_element(by=By.XPATH, value='.//a[contains(@href, "/status/")]')
         tweet_url = element.get_attribute('href')
+        tmp = tweet_url.split("/")
+        tweet_id = "_".join((tmp[-1], tmp[-3]))
     except:
         return
 
-    tweet = (
-        username, handle, postdate, text, embedded, emojis, reply_cnt, retweet_cnt, like_cnt, image_links, tweet_url)
+    tweet = Tweet(tweet_id, username, handle, postdate, text, embedded, emojis, reply_cnt, retweet_cnt, like_cnt,
+                  tweet_url, image_links)
     return tweet
 
 
@@ -123,7 +133,6 @@ def init_driver(headless=True, proxy=None, show_images=False, option=None):
     # options
     options = Options()
     if headless is True:
-        # print("Scraping on headless mode.")
         options.add_argument('--disable-gpu')
         options.headless = True
     else:
@@ -131,8 +140,7 @@ def init_driver(headless=True, proxy=None, show_images=False, option=None):
     options.add_argument('log-level=3')
     if proxy is not None:
         options.add_argument('--proxy-server=%s' % proxy)
-        # print("using proxy : ", proxy)
-    if show_images == False:
+    if not show_images:
         prefs = {"profile.managed_default_content_settings.images": 2}
         options.add_experimental_option("prefs", prefs)
     if option is not None:
@@ -143,8 +151,7 @@ def init_driver(headless=True, proxy=None, show_images=False, option=None):
 
 
 def log_search_page(driver, since, until_local, lang, display_type, words, to_account, from_account, mention_account,
-                    hashtag, filter_replies, proximity,
-                    geocode, minreplies, minlikes, minretweets):
+                    hashtag, replies_only, proximity, geocode, min_replies, min_likes, min_retweets):
     """ Search for this query between since and until_local"""
     # format the <from_account>, <to_account> and <hash_tags>
     from_account = "(from%3A" + from_account + ")%20" if from_account is not None else ""
@@ -175,47 +182,41 @@ def log_search_page(driver, since, until_local, lang, display_type, words, to_ac
     else:
         display_type = ""
 
-    # filter replies 
-    if filter_replies == True:
-        filter_replies = "%20-filter%3Areplies"
+    # replies only
+    if replies_only:
+        replies_only = "%20-filter%3Areplies"
     else:
-        filter_replies = ""
+        replies_only = ""
     # geo
     if geocode is not None:
         geocode = "%20geocode%3A" + geocode
     else:
         geocode = ""
     # min number of replies
-    if minreplies is not None:
-        minreplies = "%20min_replies%3A" + str(minreplies)
+    if min_replies is not None:
+        min_replies = "%20min_replies%3A" + str(min_replies)
     else:
-        minreplies = ""
+        min_replies = ""
     # min number of likes
-    if minlikes is not None:
-        minlikes = "%20min_faves%3A" + str(minlikes)
+    if min_likes is not None:
+        min_likes = "%20min_faves%3A" + str(min_likes)
     else:
-        minlikes = ""
+        min_likes = ""
     # min number of retweets
-    if minretweets is not None:
-        minretweets = "%20min_retweets%3A" + str(minretweets)
+    if min_retweets is not None:
+        min_retweets = "%20min_retweets%3A" + str(min_retweets)
     else:
-        minretweets = ""
-
+        min_retweets = ""
     # proximity
-    if proximity == True:
+    if proximity:
         proximity = "&lf=on"  # at the end
     else:
         proximity = ""
 
-    path = 'https://twitter.com/search?q=' + words + from_account + to_account + mention_account + hash_tags + until_local + since + lang + filter_replies + geocode + minreplies + minlikes + minretweets + '&src=typed_query' + display_type + proximity
-    print("  Search Page: " + path)
+    path = 'https://twitter.com/search?q=' + words + from_account + to_account + mention_account + hash_tags + until_local + since + lang + replies_only + geocode + min_replies + min_likes + min_retweets + '&src=typed_query' + display_type + proximity
+    print("Get From:%s" % path)
     driver.get(path)
-    return path
-
-
-def get_last_date_from_csv(path):
-    df = pd.read_csv(path)
-    return datetime.datetime.strftime(max(pd.to_datetime(df["Timestamp"])), '%Y-%m-%dT%H:%M:%S.000Z')
+    # return path
 
 
 def log_in(driver, env, timeout=20, wait=4):
@@ -254,36 +255,42 @@ def log_in(driver, env, timeout=20, wait=4):
     sleep(random.uniform(wait, wait + 1))
 
 
-def keep_scroling(driver, data, writer, tweet_ids, scrolling, tweet_parsed, limit, scroll, last_position,
-                  filter_func=None):
+def keep_scrolling(driver, endure_handlers, tweet_ids, limit, last_position, filter_handler: Filter = None):
     """ scrolling function for tweets crawling"""
 
+    # number of scrolls
+    scroll = 0
+    scrolling = True
+    tweet_parsed = 0
+    links = []
+
     while scrolling and tweet_parsed < limit:
+        print(tweet_parsed)
         sleep(random.uniform(0.5, 1.5))
         # get the card of tweets
-        page_cards = driver.find_elements(by=By.XPATH, value='//article[@data-testid="tweet"]')  # changed div by article
+        page_cards = driver.find_elements(by=By.XPATH,
+                                          value='//article[@data-testid="tweet"]')  # changed div by article
         for card in page_cards:
             tweet = get_data(card)
-            if tweet:
-                # filter
-                if filter_func and not filter_func(tweet):
-                    continue
-                # check if the tweet is unique
-                tweet_id = ''.join(tweet[:-2])
-                if tweet_id not in tweet_ids:
-                    tweet_ids.add(tweet_id)
-                    data.append(tweet)
-                    last_date = str(tweet[2])
-                    print("     Tweet at: " + str(last_date) + " is found.")
-                    writer.writerow(tweet)
-                    tweet_parsed += 1
-                    if tweet_parsed >= limit:
-                        break
+            # filter
+            if filter_handler:
+                tweet = filter_handler.run(tweet)
+            if tweet is None:
+                continue
+            # check if the tweet is unique
+            tweet_id = tweet.id
+            if tweet_id not in tweet_ids:
+                tweet_ids.add(tweet_id)
+                for handler in endure_handlers:
+                    handler.write(tweet)
+                links.extend(tweet.image_links)
+                tweet_parsed += 1
+                if tweet_parsed >= limit:
+                    break
         scroll_attempt = 0
         while tweet_parsed < limit:
             # check scroll position
             scroll += 1
-            print("  Scroll ", scroll)
             sleep(random.uniform(0.5, 1.5))
             driver.execute_script('window.scrollTo(0, document.body.scrollHeight);')
             curr_position = driver.execute_script("return window.pageYOffset;")
@@ -299,7 +306,7 @@ def keep_scroling(driver, data, writer, tweet_ids, scrolling, tweet_parsed, limi
             else:
                 last_position = curr_position
                 break
-    return driver, data, writer, tweet_ids, scrolling, tweet_parsed, scroll, last_position
+    return links
 
 
 def get_users_follow(users, headless, env, follow=None, verbose=1, wait=2, limit=float('inf')):
@@ -316,10 +323,10 @@ def get_users_follow(users, headless, env, follow=None, verbose=1, wait=2, limit
     follows_users = {}
 
     for user in users:
-        # if the login fails, find the new log in button and log in again.
+        # if the login fails, find the new login button and log in again.
         if check_exists_by_link_text("Log in", driver):
             print("Login failed. Retry...")
-            login = driver.find_element_by_link_text("Log in")
+            login = driver.find_element(by=By.LINK_TEXT, value="Log in")
             sleep(random.uniform(wait - 0.5, wait + 0.5))
             driver.execute_script("arguments[0].click();", login)
             sleep(random.uniform(wait - 0.5, wait + 0.5))
@@ -343,10 +350,10 @@ def get_users_follow(users, headless, env, follow=None, verbose=1, wait=2, limit
         is_limit = False
         while scrolling and not is_limit:
             # get the card of following or followers
-            # this is the primaryColumn attribute that contains both followings and followers
-            primaryColumn = driver.find_element(by=By.XPATH, value='//div[contains(@data-testid,"primaryColumn")]')
-            # extract only the Usercell
-            page_cards = primaryColumn.find_elements(by=By.XPATH, value='//div[contains(@data-testid,"UserCell")]')
+            # this is the primary_column attribute that contains both followings and followers
+            primary_column = driver.find_element(by=By.XPATH, value='//div[contains(@data-testid,"primary_column")]')
+            # extract only the User-cell
+            page_cards = primary_column.find_elements(by=By.XPATH, value='//div[contains(@data-testid,"UserCell")]')
             for card in page_cards:
                 # get the following or followers element
                 element = card.find_element(by=By.XPATH, value='.//div[1]/div[1]/div[1]//a[1]')
@@ -403,7 +410,14 @@ def check_exists_by_xpath(xpath, driver):
     return True
 
 
-def dowload_images(urls, save_dir):
+def download_images(urls, save_dir, proxy):
+    proxies = {
+        'http': proxy,
+        'https': proxy
+    }
+    proxy = urllib.request.ProxyHandler(proxies)
+    urllib.request.install_opener(urllib.request.build_opener(proxy))
+
     for i, url_v in enumerate(urls):
         for j, url in enumerate(url_v):
             urllib.request.urlretrieve(url, save_dir + '/' + str(i + 1) + '_' + str(j + 1) + ".jpg")
