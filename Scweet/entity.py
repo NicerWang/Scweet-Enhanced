@@ -33,7 +33,7 @@ class Query:
     from_account: Optional[str] = field(default=None)
     mention_account: Optional[str] = field(default=None)
     replies_only: Optional[bool] = field(default=False)
-    interval: int = field(default=5)
+    interval: int = field(default=datetime.timedelta(days=1))
     lang: Optional[str] = field(default=None)
     limit: Optional[float] = field(default=float("inf"))
     display_type: Optional[str] = field(default="Top")
@@ -95,7 +95,7 @@ class CSVDurabilityHandler(DurabilityHandler):
 
     def get_last_date(self):
         df = self.pd.read_csv(self.full_path)
-        return datetime.datetime.strftime(max(self.pd.to_datetime(df["Timestamp"])), '%Y-%m-%dT%H:%M:%S.000Z')[:10]
+        return datetime.datetime.strftime(max(self.pd.to_datetime(df["Timestamp"])), '%Y-%m-%d %H:%M:%S')
 
     def write(self, item):
         self.writer.writerow(
@@ -119,7 +119,7 @@ class MySQLDurabilityHandler(DurabilityHandler):
 
     def get_last_date(self):
         self.cursor.execute("SELECT max(postdate) FROM {}".format(self.table))
-        return self.cursor.fetchone()[0]
+        return str(self.cursor.fetchone()[0])
 
     def write(self, item: Tweet):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.strptime(item.postdate, '%Y-%m-%dT%H:%M:%S.000Z'))

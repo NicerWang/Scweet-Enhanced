@@ -6,13 +6,13 @@ A Tool Enhanced from [Scweet](https://github.com/Altimis/Scweet).
 
 ## What Enhanced？
 
-1. Support Filter
+1. **Support Filter**
 
    Inherit Filter (in entity.py), and implement `run` method.
 
    Then you can do anything to tweet in `run`, or return `None` to discard it.
 
-2. Detach Durability
+2. **Detach Durability**
 
    In Scweet, you will get a Dataframe and csv files after a run.
 
@@ -30,13 +30,17 @@ A Tool Enhanced from [Scweet](https://github.com/Altimis/Scweet).
 
    > If you want `resume`, pass `resume_handler` which accounts for getting newest tweet's time.
 
-3. Optimize parameters of `scrape`
+3. **Second Precision**
+
+   since&until **MUST** be `"%Y-%m-%d %H:%M:%S"`, such as "2023-04-18 23:00:00".
+
+4. Optimize parameters of `scrape`
 
    Some name of parametersare changed.
 
    You can create Query and Setting (in entity.py) to simplify parameters (See Example in [Usage](#Usage)).
 
-4. Other small changes.
+5. Other small changes.
 
 **Note : You must have Chrome installed, new source code in Scweet supports Firefox, but not Scweet-Enhanced.**
 

@@ -1,5 +1,7 @@
+import datetime
 import random
 import re
+import time
 import urllib
 from time import sleep
 
@@ -255,7 +257,7 @@ def log_in(driver, env, timeout=20, wait=4):
     sleep(random.uniform(wait, wait + 1))
 
 
-def keep_scrolling(driver, endure_handlers, tweet_ids, limit, last_position, filter_handler: Filter = None):
+def keep_scrolling(driver, endure_handlers, tweet_ids, limit, last_position, since, until, filter_handler: Filter = None):
     """ scrolling function for tweets crawling"""
 
     # number of scrolls
@@ -265,13 +267,17 @@ def keep_scrolling(driver, endure_handlers, tweet_ids, limit, last_position, fil
     links = []
 
     while scrolling and tweet_parsed < limit:
-        print(tweet_parsed)
+        # print(tweet_parsed)
         sleep(random.uniform(0.5, 1.5))
         # get the card of tweets
         page_cards = driver.find_elements(by=By.XPATH,
                                           value='//article[@data-testid="tweet"]')  # changed div by article
         for card in page_cards:
             tweet = get_data(card)
+            # time check
+            postdate = datetime.datetime.strptime(tweet.postdate, '%Y-%m-%dT%H:%M:%S.000Z')
+            if postdate < since or postdate > until:
+                continue
             # filter
             if filter_handler:
                 tweet = filter_handler.run(tweet)
