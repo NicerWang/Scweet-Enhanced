@@ -1,18 +1,21 @@
 import os
 import random
 import time
+from datetime import datetime, timedelta, timezone
 from time import sleep
 from typing import List
-from datetime import datetime, timedelta, timezone
 
 from .entity import DurabilityHandler
 from .utils import init_driver, log_search_page, keep_scrolling, download_images
 
-def scrape(since, until=None, words=None, to_account=None, from_account=None, mention_account=None,
+
+def scrape(since=None, until=None, words=None, to_account=None, from_account=None, mention_account=None,
            interval=timedelta(days=1), lang=None, headless=True, limit=float("inf"), display_type="Top",
            proxy=None, hashtag=None, show_images=False, save_images=False, image_dir=None, replies_only=False,
            proximity=False, geocode=None, min_replies=None, min_likes=None, min_retweets=None, filter_handler=None,
-           endure_handler: List[DurabilityHandler] = None, resume_handler: DurabilityHandler = None):
+           listen_interval=None, endure_handler: List[DurabilityHandler] = None,
+           resume_handler: DurabilityHandler = None,
+           ):
     """
     scrape data from twitter using requests, starting from <since> until <until>. The program make a search between
     each <since> and <until_local> until it reaches the <until> date if it's given, else it stops at the actual date.
@@ -21,6 +24,17 @@ def scrape(since, until=None, words=None, to_account=None, from_account=None, me
         print("No endure handler to record outputs")
         return
 
+    # listener mode
+    listener = False
+    if listen_interval is not None:
+        display_type = "Latest"
+        listener = True
+        until = None
+    else:
+        if since is None:
+            print("MUST provide <since> when not in listener mode")
+            return
+
     # unique tweet ids
     tweet_ids = set()
     # if <until>=None, set it to the actual date
@@ -28,8 +42,10 @@ def scrape(since, until=None, words=None, to_account=None, from_account=None, me
         until = datetime.strftime(datetime.fromtimestamp(time.time(), tz=timezone.utc), '%Y-%m-%d %H:%M:%S')
 
     # time bounds in seconds
-    since_seconds = datetime.strptime(since, '%Y-%m-%d %H:%M:%S')
     until_seconds = datetime.strptime(until, '%Y-%m-%d %H:%M:%S')
+    if listener and resume_handler is None:
+        since = datetime.strftime(until_seconds - listen_interval, '%Y-%m-%d %H:%M:%S')
+    since_seconds = datetime.strptime(since, '%Y-%m-%d %H:%M:%S')
     # start scraping from <since> until <until>
     since_local = datetime.strptime(since[:10], '%Y-%m-%d')
     until_local = datetime.strptime(since[:10], '%Y-%m-%d') + interval
@@ -80,7 +96,7 @@ def scrape(since, until=None, words=None, to_account=None, from_account=None, me
 
         # start scrolling and get tweets
         links = keep_scrolling(driver, endure_handler, tweet_ids, limit, last_position, since_seconds,
-                               until_seconds, filter_handler)
+                               until_seconds, filter_handler, listener)
         img_links.append(links)
 
         # keep updating <start date> and <end date> for every search

@@ -25,7 +25,7 @@ class Tweet:
 
 @dataclass
 class Query:
-    since: str = field()
+    since: Optional[str] = field(default=None)
     until: Optional[str] = field(default=None)
     words: Optional[List[str]] = field(default=None)
     hashtag: Optional[str] = field(default=None)

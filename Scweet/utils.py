@@ -257,7 +257,7 @@ def log_in(driver, env, timeout=20, wait=4):
     sleep(random.uniform(wait, wait + 1))
 
 
-def keep_scrolling(driver, endure_handlers, tweet_ids, limit, last_position, since, until, filter_handler: Filter = None):
+def keep_scrolling(driver, endure_handlers, tweet_ids, limit, last_position, since, until, filter_handler: Filter = None, listener=False):
     """ scrolling function for tweets crawling"""
 
     # number of scrolls
@@ -274,8 +274,12 @@ def keep_scrolling(driver, endure_handlers, tweet_ids, limit, last_position, sin
                                           value='//article[@data-testid="tweet"]')  # changed div by article
         for card in page_cards:
             tweet = get_data(card)
+            if tweet is None:
+                continue
             # time check
             postdate = datetime.datetime.strptime(tweet.postdate, '%Y-%m-%dT%H:%M:%S.000Z')
+            if listener and postdate < since:
+                return links
             if postdate < since or postdate > until:
                 continue
             # filter

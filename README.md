@@ -32,15 +32,27 @@ A Tool Enhanced from [Scweet](https://github.com/Altimis/Scweet).
 
 3. **Second Precision**
 
-   since&until **MUST** be `"%Y-%m-%d %H:%M:%S"`, such as "2023-04-18 23:00:00".
+   In Scweet, you can only use day precision.
 
-4. Optimize parameters of `scrape`
+   In Scweet-Enhanced, you can use second precision.
+
+   `since`&`until` **MUST** be `"%Y-%m-%d %H:%M:%S"`, such as "2023-04-18 23:00:00".
+
+4. **Listener Mode**
+
+   Get latest tweets in `listen_interval` more quickly (than in second precision).
+
+   `since`&`until` are not needed, just provide `listen_interval` (datetime.timedelta).
+
+   > If `listen_interval` and `resume_handler` were set, the latter works.
+
+5. Optimize parameters of `scrape`
 
    Some name of parametersare changed.
 
    You can create Query and Setting (in entity.py) to simplify parameters (See Example in [Usage](#Usage)).
 
-5. Other small changes.
+6. Other small changes.
 
 **Note : You must have Chrome installed, new source code in Scweet supports Firefox, but not Scweet-Enhanced.**
 
