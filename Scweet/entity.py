@@ -44,14 +44,6 @@ class Query:
     min_retweets: Optional[str] = field(default=None)
 
 
-@dataclass
-class Setting:
-    proxy: Optional[str] = field(default=None)
-    show_images: bool = field(default=False)
-    save_images: Optional[bool] = field(default=False)
-    headless: bool = field(default=True)
-
-
 class LazyImport:
     def __init__(self, module_name):
         self.module_name = module_name

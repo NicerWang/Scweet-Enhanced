@@ -2,6 +2,9 @@
 
 # Scweet-Enhanced
 
+> * Update 2023/05/01: You MUST log in before scrape(), SEE [usage](#Usage).
+
+
 A Tool Enhanced from [Scweet](https://github.com/Altimis/Scweet).
 
 ## What Enhanced？
@@ -40,7 +43,7 @@ A Tool Enhanced from [Scweet](https://github.com/Altimis/Scweet).
 
 4. **Listener Mode**
 
-   Get latest tweets in `listen_interval` more quickly (than in second precision).
+   Get the latest tweets in `listen_interval` more quickly (than in second precision).
 
    `since`&`until` are not needed, just provide `listen_interval` (datetime.timedelta).
 
@@ -48,7 +51,7 @@ A Tool Enhanced from [Scweet](https://github.com/Altimis/Scweet).
 
 5. Optimize parameters of `scrape`
 
-   Some name of parametersare changed.
+   Some name of parameter changed.
 
    You can create Query and Setting (in entity.py) to simplify parameters (See Example in [Usage](#Usage)).
 
@@ -71,11 +74,10 @@ A Tool Enhanced from [Scweet](https://github.com/Altimis/Scweet).
 
    ```python3
    from Scweet.scweet import scrape
-   from Scweet.entity import Filter, CSVDurabilityHandler, MySQLDurabilityHandler, Query, Setting, Tweet
+   from Scweet.utils import init_driver, log_in 
+   from Scweet.entity import Filter, CSVDurabilityHandler, MySQLDurabilityHandler, Query, Tweet
    
-   query = Query(hashtag="bitcoin", since="2023-04-01", until="2023-04-02", interval=1, display_type="Top", replies_only=False, proximity=True)
-   setting = Setting(headless=True, show_images=False, save_images=False, proxy="http://127.0.0.1:7890")
-   
+   query = Query(hashtag="bitcoin", since="2023-04-01 00:00:00", until="2023-04-02 00:00:00", interval=1, display_type="Top", replies_only=False, proximity=True)
    
    class MyFilter(Filter):
        def run(self, tweet: Tweet) -> Tweet:
@@ -85,6 +87,8 @@ A Tool Enhanced from [Scweet](https://github.com/Altimis/Scweet).
    
    csv_handler = CSVDurabilityHandler(file_name="file.csv")
    mysql_handler = MySQLDurabilityHandler("url", "username", "passwd", "db", "table")
-   
-   data = scrape(**vars(query), **vars(setting), filter_handler=MyFilter(), endure_handler=[csv_handler, mysql_handler])
+   driver = init_driver(headless=False, show_images=False, proxy="http://127.0.0.1:7890")
+   # MUST Config Your Account In .env
+   log_in(driver, env=".env")
+   data = scrape(**vars(query), filter_handler=MyFilter(), endure_handler=[csv_handler, mysql_handler], save_images=False, proxy="http://127.0.0.1:7890", driver=driver)
    ```

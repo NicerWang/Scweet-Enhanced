@@ -6,16 +6,15 @@ from time import sleep
 from typing import List
 
 from .entity import DurabilityHandler
-from .utils import init_driver, log_search_page, keep_scrolling, download_images
+from .utils import log_search_page, keep_scrolling, download_images
 
 
 def scrape(since=None, until=None, words=None, to_account=None, from_account=None, mention_account=None,
-           interval=timedelta(days=1), lang=None, headless=True, limit=float("inf"), display_type="Top",
-           proxy=None, hashtag=None, show_images=False, save_images=False, image_dir=None, replies_only=False,
+           interval=timedelta(days=1), lang=None, limit=float("inf"), display_type="Top",
+            hashtag=None, save_images=False, image_dir=None, replies_only=False,
            proximity=False, geocode=None, min_replies=None, min_likes=None, min_retweets=None, filter_handler=None,
            listen_interval=None, endure_handler: List[DurabilityHandler] = None,
-           resume_handler: DurabilityHandler = None,
-           ):
+           resume_handler: DurabilityHandler = None, driver=None, proxy=None):
     """
     scrape data from twitter using requests, starting from <since> until <until>. The program make a search between
     each <since> and <until_local> until it reaches the <until> date if it's given, else it stops at the actual date.
@@ -62,9 +61,6 @@ def scrape(since=None, until=None, words=None, to_account=None, from_account=Non
         show_images = True
         if image_dir is None:
             image_dir = "./images"
-
-    # initiate the driver
-    driver = init_driver(headless, proxy, show_images)
     # resume scraping from previous work
     if resume_handler is not None:
         last_date = resume_handler.get_last_date()
