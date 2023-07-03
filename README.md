@@ -2,6 +2,8 @@
 
 # Scweet-Enhanced
 
+> * **Update 2023/07/03: Twitter limited the amount of tweets users can view per day, I am searching for solutions.** 
+>
 > * Update 2023/05/01: You MUST log in before scrape(), SEE [usage](#Usage).
 
 
