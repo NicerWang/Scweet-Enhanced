@@ -1,5 +1,5 @@
 certifi
-selenium
+selenium==4.2.0
 python-dotenv
 chromedriver-autoinstaller
 urllib3
